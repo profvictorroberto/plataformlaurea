@@ -6,8 +6,8 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
         .header { background: #0d6efd; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .menu { display: flex; gap: 10px; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ccc; }
-        .menu button { background: none; border: none; font-size: 16px; cursor: pointer; padding: 8px 15px; border-radius: 5px; color: #555; }
+        .menu { display: flex; gap: 10px; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ccc; flex-wrap: wrap; }
+        .menu button { background: none; border: none; font-size: 15px; cursor: pointer; padding: 8px 15px; border-radius: 5px; color: #555; }
         .menu button:hover { background: #e9ecef; }
         .menu button.active { background: #0d6efd; color: white; font-weight: bold; }
         
@@ -36,6 +36,8 @@
         .badge-up { background: #198754; }
         .badge-down { background: #dc3545; }
         .ranking-box { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffe69c; margin-bottom: 15px; }
+        
+        .box-identificacao { background: #eef2f5; padding: 15px; border-radius: 8px; border: 2px solid #0d6efd; margin-bottom: 20px; }
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -45,7 +47,7 @@
 
 <div class="container" id="tela-login">
     <h2 style="text-align: center; color: #0d6efd;">Plataforma Láurea SESI</h2>
-    <input type="email" id="email" placeholder="E-mail do Professor" style="width: 100%;">
+    <input type="email" id="email" placeholder="E-mail de Acesso Institucional" style="width: 100%;">
     <input type="password" id="senha" placeholder="Senha" style="width: 100%;">
     <button class="btn-primary" onclick="login()">Entrar</button>
 </div>
@@ -54,15 +56,16 @@
     <div class="header">
         <h3 style="margin: 0;">Plataforma Láurea SESI</h3>
         <div>
-            <span id="nome-prof" style="margin-right: 15px; font-size: 14px;"></span>
+            <span style="margin-right: 15px; font-size: 14px;">Acesso Professor</span>
             <button onclick="sair()" class="btn-sm" style="background: #343a40;">Sair</button>
         </div>
     </div>
 
     <div class="menu">
         <button id="tab-btn-votacao" class="active" onclick="mudarAba('votacao')">Votação & Pódios</button>
-        <button id="tab-btn-turmas" onclick="mudarAba('turmas')">Gerenciar Turmas</button>
-        <button id="tab-btn-alunos" onclick="mudarAba('alunos')">Gerenciar Alunos</button>
+        <button id="tab-btn-professores" onclick="mudarAba('professores')">Professores</button>
+        <button id="tab-btn-turmas" onclick="mudarAba('turmas')">Turmas</button>
+        <button id="tab-btn-alunos" onclick="mudarAba('alunos')">Alunos</button>
     </div>
 
     <!-- ABA 1: VOTAÇÃO -->
@@ -70,9 +73,20 @@
         <div class="grid-2">
             <div>
                 <h3>Painel de Votação</h3>
+                
+                <!-- Identificação do Professor -->
+                <div class="box-identificacao">
+                    <h4 style="margin: 0 0 10px 0; color: #0d6efd;">1. Quem está votando?</h4>
+                    <select id="select-prof-votante" style="width: 100%; font-weight: bold;" onchange="atualizarTelas()">
+                        <option value="">-- Selecione seu nome na lista --</option>
+                    </select>
+                </div>
+
+                <h4 style="margin: 0 0 10px 0;">2. Selecione a Turma</h4>
                 <select id="filtro-turma-votacao" style="width: 100%; margin-bottom: 15px;" onchange="atualizarTelas()">
                     <option value="">-- Selecione uma Turma --</option>
                 </select>
+                
                 <div id="lista-votacao"><p style="color: #666;">Selecione uma turma acima.</p></div>
             </div>
             <div>
@@ -82,7 +96,18 @@
         </div>
     </div>
 
-    <!-- ABA 2: TURMAS -->
+    <!-- ABA 2: PROFESSORES -->
+    <div id="aba-professores" class="container aba-conteudo" style="display: none;">
+        <h3>Cadastrar Professores</h3>
+        <p style="font-size: 14px; color: #666;">Adicione o nome dos professores para que eles possam selecionar quem são na hora de votar.</p>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input type="text" id="nomeNovoProf" placeholder="Nome do Professor (Ex: João Silva)" style="flex-grow: 1;">
+            <button class="btn-primary" style="width: auto; padding: 0 20px;" onclick="salvarProfessor()">Adicionar</button>
+        </div>
+        <div id="lista-professores-admin"></div>
+    </div>
+
+    <!-- ABA 3: TURMAS -->
     <div id="aba-turmas" class="container aba-conteudo" style="display: none;">
         <h3>Criar Nova Turma</h3>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -98,7 +123,7 @@
         <div id="lista-turmas-admin"></div>
     </div>
 
-    <!-- ABA 3: ALUNOS -->
+    <!-- ABA 4: ALUNOS -->
     <div id="aba-alunos" class="container aba-conteudo" style="display: none;">
         <h3>Cadastrar / Gerenciar Alunos</h3>
         <div class="card" style="display: flex; flex-wrap: wrap; gap: 10px;">
@@ -127,23 +152,21 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let professorLogado = "";
     
     // ESTADO GLOBAL DA APLICAÇÃO
     let listaDeTurmas = [];
     let listaDeAlunos = [];
+    let listaDeProfessores = [];
 
     // 1. LOGIN E NAVEGAÇÃO
     function login() {
         const email = document.getElementById('email').value;
         const senha = document.getElementById('senha').value;
-        auth.signInWithEmailAndPassword(email, senha).then((cred) => {
-            professorLogado = cred.user.email;
+        auth.signInWithEmailAndPassword(email, senha).then(() => {
             document.getElementById('tela-login').style.display = 'none';
             document.getElementById('tela-app').style.display = 'block';
-            document.getElementById('nome-prof').innerText = "Prof: " + professorLogado;
             iniciarSistema();
-        }).catch(err => alert("Erro ao logar."));
+        }).catch(err => alert("Erro ao logar. Verifique o e-mail e a senha."));
     }
 
     function sair() { auth.signOut().then(() => location.reload()); }
@@ -153,10 +176,10 @@
         document.querySelectorAll('.menu button').forEach(el => el.classList.remove('active'));
         document.getElementById(`aba-${abaId}`).style.display = 'block';
         document.getElementById(`tab-btn-${abaId}`).classList.add('active');
-        atualizarTelas(); // Força atualização ao trocar de aba
+        atualizarTelas();
     }
 
-    // 2. ESCUTAR DADOS EM TEMPO REAL (O coração do sistema)
+    // 2. ESCUTAR DADOS EM TEMPO REAL
     function iniciarSistema() {
         db.collection("turmas").onSnapshot(snap => {
             listaDeTurmas = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
@@ -167,19 +190,41 @@
             listaDeAlunos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
             atualizarTelas();
         });
+
+        db.collection("professores").onSnapshot(snap => {
+            listaDeProfessores = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            atualizarTelas();
+        });
     }
 
     // 3. MOTOR CENTRAL DE RENDERIZAÇÃO
     function atualizarTelas() {
-        // SEGURANÇA: Filtra alunos garantindo que a turma deles ainda existe
         const turmasIds = listaDeTurmas.map(t => t.id);
         const alunosValidos = listaDeAlunos.filter(a => turmasIds.includes(a.turmaId));
+        const profVotanteAtual = document.getElementById('select-prof-votante').value;
 
-        // Ordenar Turmas localmente
-        listaDeTurmas.sort((a, b) => {
-            if (a.serie === b.serie) return a.nome.localeCompare(b.nome);
-            return a.serie - b.serie;
+        // Ordenações Alfabéticas
+        listaDeTurmas.sort((a, b) => (a.serie === b.serie) ? a.nome.localeCompare(b.nome) : a.serie - b.serie);
+        listaDeProfessores.sort((a, b) => a.nome.localeCompare(b.nome));
+
+        // 3.0 ATUALIZAR LISTA DE PROFESSORES
+        let optProfs = `<option value="">-- Selecione seu nome na lista --</option>`;
+        let htmlProfs = "";
+        listaDeProfessores.forEach(p => {
+            optProfs += `<option value="${p.nome}">${p.nome}</option>`;
+            htmlProfs += `
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+                    <span><strong>${p.nome}</strong></span>
+                    <button class="btn-sm btn-del" onclick="excluirProfessor('${p.id}')">Remover</button>
+                </div>`;
         });
+        document.getElementById('lista-professores-admin').innerHTML = htmlProfs || "<p>Nenhum professor cadastrado.</p>";
+        
+        const selectProf = document.getElementById('select-prof-votante');
+        selectProf.innerHTML = optProfs;
+        if (listaDeProfessores.some(p => p.nome === profVotanteAtual)) {
+            selectProf.value = profVotanteAtual;
+        }
 
         // 3.1 ATUALIZAR DROPDOWNS DE TURMAS
         let options = `<option value="">-- Selecione uma Turma --</option>`;
@@ -196,7 +241,7 @@
         if (turmasIds.includes(valVotacao)) selVotacao.value = valVotacao;
         if (turmasIds.includes(valCadastro)) selCadastro.value = valCadastro;
 
-        // 3.2 ATUALIZAR LISTA DE TURMAS (Aba Gerenciar Turmas)
+        // 3.2 ATUALIZAR LISTA DE TURMAS
         let htmlTurmas = "";
         listaDeTurmas.forEach(t => {
             htmlTurmas += `
@@ -210,7 +255,7 @@
         });
         document.getElementById('lista-turmas-admin').innerHTML = htmlTurmas || "<p>Nenhuma turma criada.</p>";
 
-        // 3.3 ATUALIZAR LISTA DE ALUNOS (Aba Gerenciar Alunos)
+        // 3.3 ATUALIZAR LISTA DE ALUNOS
         const idAdmin = selCadastro.value;
         const divAdmin = document.getElementById('lista-alunos-admin');
         if (!idAdmin) {
@@ -231,37 +276,50 @@
             divAdmin.innerHTML = htmlAlunos || "<p>Nenhum aluno nesta turma.</p>";
         }
 
-        // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO
+        // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO (COM TRAVA DE PROFESSOR)
         const idVot = selVotacao.value;
         const divVotacao = document.getElementById('lista-votacao');
+        
         if (!idVot) {
             divVotacao.innerHTML = "<p style='color: #666;'>Selecione uma turma acima.</p>";
         } else {
             let alunosVot = alunosValidos.filter(a => a.turmaId === idVot).sort((a,b) => a.nome.localeCompare(b.nome));
             let htmlVot = "";
+            
             alunosVot.forEach(aluno => {
                 const votos = aluno.votosRegistrados || {};
+                
                 const renderComp = (compNome) => {
                     let logHtml = "";
                     let jaVotou = false;
+                    
                     for (let key in votos) {
                         if (votos[key].competencia === compNome) {
                             const v = votos[key];
                             const badge = v.valor > 0 ? 'badge-up' : 'badge-down';
                             const sinal = v.valor > 0 ? '+' : '';
                             logHtml += `<div><span class="badge ${badge}">${sinal}${v.valor}</span> <strong>${v.prof}</strong>: <em>${v.obs || 'Sem obs'}</em></div>`;
-                            if (v.prof === professorLogado) jaVotou = true;
+                            
+                            // Verifica se o professor SELECIONADO já votou
+                            if (selectProf.value && v.prof === selectProf.value) jaVotou = true;
                         }
                     }
                     if (logHtml === "") logHtml = "<em>Nenhum voto.</em>";
 
-                    let acoes = jaVotou 
-                        ? `<div style="color: #198754; font-weight: bold; font-size: 13px;">✅ Você já votou!</div>`
-                        : `<div class="votacao-acoes">
+                    // Define o que mostrar na área de ação (Botões, Aviso de Bloqueio, ou Pedido para selecionar o nome)
+                    let acoes = "";
+                    if (!selectProf.value) {
+                        acoes = `<div style="font-size: 12px; color: #dc3545; font-style: italic;">Selecione seu nome lá em cima para votar.</div>`;
+                    } else if (jaVotou) {
+                        acoes = `<div style="color: #198754; font-weight: bold; font-size: 13px;">✅ Você já votou!</div>`;
+                    } else {
+                        acoes = `
+                            <div class="votacao-acoes">
                                 <input type="text" id="obs-${aluno.id}-${compNome}" class="obs-input" placeholder="Justificativa (Opcional)">
                                 <button class="btn-vote btn-up" onclick="votar('${aluno.id}', '${compNome}', 0.5, 'obs-${aluno.id}-${compNome}')">+0,5</button>
                                 <button class="btn-vote btn-down" onclick="votar('${aluno.id}', '${compNome}', -0.5, 'obs-${aluno.id}-${compNome}')">-0,5</button>
-                           </div>`;
+                            </div>`;
+                    }
 
                     return `<div class="competencia-row"><div><strong>${compNome}</strong><div class="historico-votos">${logHtml}</div></div>${acoes}</div>`;
                 };
@@ -278,7 +336,7 @@
             divVotacao.innerHTML = htmlVot || "<p>Nenhum aluno nesta turma.</p>";
         }
 
-        // 3.5 ATUALIZAR OS PÓDIOS (FILTRADO DE FANTASMAS)
+        // 3.5 ATUALIZAR OS PÓDIOS
         const divRankings = document.getElementById('rankings');
         divRankings.innerHTML = ''; 
         ['6', '7', '8', '9'].forEach(serie => {
@@ -297,13 +355,22 @@
         });
     }
 
-    // 4. FUNÇÕES DE BANCO DE DADOS (CRIAR, EDITAR, EXCLUIR, VOTAR)
+    // 4. FUNÇÕES DE BANCO DE DADOS
+    function salvarProfessor() {
+        const nome = document.getElementById('nomeNovoProf').value.trim();
+        if (nome) db.collection("professores").add({ nome }).then(() => document.getElementById('nomeNovoProf').value = "");
+    }
+
+    function excluirProfessor(id) {
+        if (confirm("Remover este professor da lista? (Os votos passados dele continuarão salvos no histórico)")) {
+            db.collection("professores").doc(id).delete();
+        }
+    }
+
     function salvarTurma() {
         const nome = document.getElementById('nomeNovaTurma').value.trim();
         const serie = document.getElementById('serieNovaTurma').value;
-        if (nome) {
-            db.collection("turmas").add({ nome, serie }).then(() => document.getElementById('nomeNovaTurma').value = "");
-        }
+        if (nome) db.collection("turmas").add({ nome, serie }).then(() => document.getElementById('nomeNovaTurma').value = "");
     }
 
     function editarTurma(id, nomeAtual) {
@@ -315,12 +382,9 @@
         if (confirm("ATENÇÃO: Você apagará a turma E TODOS OS ALUNOS cadastrados nela. Deseja continuar?")) {
             try {
                 const batch = db.batch();
-                // 1. Coleta todos os alunos da turma para apagar em cascata
                 const alunosSnapshot = await db.collection("alunos").where("turmaId", "==", id).get();
                 alunosSnapshot.forEach(doc => batch.delete(doc.ref));
-                // 2. Apaga a turma em si
                 batch.delete(db.collection("turmas").doc(id));
-                // 3. Executa a destruição dupla
                 await batch.commit();
             } catch (err) { alert("Erro ao excluir: " + err.message); }
         }
@@ -355,16 +419,21 @@
     }
 
     async function votar(alunoId, competencia, valor, inputId) {
+        const profNome = document.getElementById('select-prof-votante').value;
+        if (!profNome) return alert("Por favor, selecione o seu nome na lista 'Quem está votando?' lá no topo.");
+
         const obs = document.getElementById(inputId).value.trim();
         const ref = db.collection('alunos').doc(alunoId);
-        const profKey = professorLogado.replace(/[\.\#\$\[\]]/g, '_');
+        
+        // Chave única para evitar voto duplo do mesmo professor na mesma competência
+        const profKey = profNome.replace(/[\.\#\$\[\]]/g, '_');
         const votoKey = `${profKey}_${competencia}`;
 
         try {
             await db.runTransaction(async (transaction) => {
                 const doc = await transaction.get(ref);
                 let dados = doc.data();
-                if ((dados.votosRegistrados || {})[votoKey]) throw "Você já votou aqui!";
+                if ((dados.votosRegistrados || {})[votoKey]) throw "Você já votou nesta competência para este aluno!";
                 
                 let novaMedia = dados.mediaFinal + valor;
                 if (novaMedia > 10) novaMedia = 10;
@@ -373,7 +442,7 @@
                 transaction.set(ref, {
                     mediaFinal: novaMedia,
                     votosRegistrados: {
-                        [votoKey]: { valor, obs, prof: professorLogado, competencia, data: new Date().toISOString() }
+                        [votoKey]: { valor, obs, prof: profNome, competencia, data: new Date().toISOString() }
                     }
                 }, { merge: true });
             });
