@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Premiação de Alunos</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input, select, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        button { background-color: #0d6efd; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0b5ed7; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fafafa; }
+        .btn-vote { width: 45px; padding: 5px; margin: 2px; font-size: 12px; }
+        .btn-up { background-color: #198754; }
+        .btn-down { background-color: #dc3545; }
+        .ranking-box { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffe69c; }
+        .competencia-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #ccc; padding: 5px 0; }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body>
+
+<!-- Tela de Login -->
+<div class="container" id="tela-login">
+    <h2>Acesso do Professor</h2>
+    <input type="email" id="email" placeholder="E-mail cadastrado">
+    <input type="password" id="senha" placeholder="Senha">
+    <button onclick="login()">Entrar</button>
+</div>
+
+<!-- Tela Principal do Sistema -->
+<div class="container" id="tela-app" style="display:none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Painel de Votação</h2>
+        <button onclick="sair()" style="width: auto; background-color: #6c757d;">Sair</button>
+    </div>
+
+    <div class="grid">
+        <!-- Coluna 1: Cadastro e Lista de Alunos -->
+        <div>
+            <div class="card">
+                <h3>Cadastrar Novo Aluno</h3>
+                <input type="text" id="nomeAluno" placeholder="Nome Completo do Aluno">
+                <select id="serieAluno">
+                    <option value="6">6º Ano</option>
+                    <option value="7">7º Ano</option>
+                    <option value="8">8º Ano</option>
+                    <option value="9">9º Ano</option>
+                </select>
+                <input type="number" id="mediaAluno" placeholder="Média Atual (ex: 7.5)" step="0.1" min="0" max="10">
+                <button onclick="cadastrarAluno()">Registrar Aluno</button>
+            </div>
+
+            <h3>Lista para Votação</h3>
+            <div id="lista-alunos"></div>
+        </div>
+
+        <!-- Coluna 2: Rankings ao Vivo -->
+        <div>
+            <h3>Pódio Atualizado (Top 3)</h3>
+            <div id="rankings"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // COLE SUAS CREDENCIAIS AQUI
+    const firebaseConfig = {
+        apiKey: "SUA_API_KEY",
+        authDomain: "SEU_PROJETO.firebaseapp.com",
+        projectId: "SEU_PROJETO",
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let professorLogado = "";
+
+    // Autenticação
+    function login() {
+        const email = document.getElementById('email').value;
+        const senha = document.getElementById('senha').value;
+        auth.signInWithEmailAndPassword(email, senha)
+            .then((cred) => {
+                professorLogado = cred.user.email;
+                document.getElementById('tela-login').style.display = 'none';
+                document.getElementById('tela-app').style.display = 'block';
+                iniciarSistema();
+            })
+            .catch(error => alert("Erro ao logar. Verifique as credenciais."));
+    }
+
+    function sair() {
+        auth.signOut().then(() => location.reload());
+    }
+
+    // Cadastro de Aluno
+    function cadastrarAluno() {
+        const nome = document.getElementById('nomeAluno').value;
+        const serie = document.getElementById('serieAluno').value;
+        const media = parseFloat(document.getElementById('mediaAluno').value);
+
+        if(!nome || isNaN(media)) return alert("Preencha todos os campos corretamente.");
+
+        db.collection("alunos").add({
+            nome: nome,
+            serie: serie,
+            mediaInicial: media,
+            mediaFinal: media
+        }).then(() => {
+            alert("Aluno registrado com sucesso!");
+            document.getElementById('nomeAluno').value = '';
+            document.getElementById('mediaAluno').value = '';
+        });
+    }
+
+    // Sistema de Votação Seguro (Transação)
+    async function votar(id, nomeAluno, competencia, valor) {
+        const alunoRef = db.collection('alunos').doc(id);
+        const logRef = db.collection('logs_votacao').doc();
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(alunoRef);
+                if (!doc.exists) throw "Aluno não encontrado!";
+
+                let mediaAtual = doc.data().mediaFinal;
+                let novaMedia = mediaAtual + valor;
+
+                if (novaMedia > 10) novaMedia = 10;
+                if (novaMedia < 0) novaMedia = 0;
+
+                transaction.update(alunoRef, { mediaFinal: novaMedia });
+                transaction.set(logRef, {
+                    alunoId: id,
+                    alunoNome: nomeAluno,
+                    professor: professorLogado,
+                    competencia: competencia,
+                    alteracao: valor,
+                    data: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            alert("Voto computado!");
+        } catch (error) {
+            alert("Erro ao computar voto.");
+        }
+    }
+
+    // Carregar Interface
+    function iniciarSistema() {
+        // Listener para carregar todos os alunos na lista de votação
+        db.collection("alunos").orderBy("nome").onSnapshot(snapshot => {
+            let html = "";
+            snapshot.forEach(doc => {
+                const aluno = doc.data();
+                html += `
+                    <div class="card">
+                        <strong>${aluno.nome}</strong> (${aluno.serie}º Ano) <br>
+                        Média Atual: <strong style="font-size: 18px; color: #0d6efd;">${aluno.mediaFinal.toFixed(2)}</strong>
+                        <hr>
+                        <div class="competencia-row">
+                            <span>Comportamento</span>
+                            <div>
+                                <button class="btn-vote btn-up" onclick="votar('${doc.id}', '${aluno.nome}', 'Comportamento', 0.5)">+0,5</button>
+                                <button class="btn-vote btn-down" onclick="votar('${doc.id}', '${aluno.nome}', 'Comportamento', -0.5)">-0,5</button>
+                            </div>
+                        </div>
+                        <div class="competencia-row">
+                            <span>Participação</span>
+                            <div>
+                                <button class="btn-vote btn-up" onclick="votar('${doc.id}', '${aluno.nome}', 'Participação', 0.5)">+0,5</button>
+                                <button class="btn-vote btn-down" onclick="votar('${doc.id}', '${aluno.nome}', 'Participação', -0.5)">-0,5</button>
+                            </div>
+                        </div>
+                        <div class="competencia-row">
+                            <span>Frequência</span>
+                            <div>
+                                <button class="btn-vote btn-up" onclick="votar('${doc.id}', '${aluno.nome}', 'Frequência', 0.5)">+0,5</button>
+                                <button class="btn-vote btn-down" onclick="votar('${doc.id}', '${aluno.nome}', 'Frequência', -0.5)">-0,5</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('lista-alunos').innerHTML = html;
+        });
+
+        // Listeners para os Rankings por Série
+        const series = ['6', '7', '8', '9'];
+        series.forEach(serie => {
+            db.collection("alunos").where("serie", "==", serie).orderBy("mediaFinal", "desc").limit(3)
+            .onSnapshot(snapshot => {
+                let html = `<div class="ranking-box"><h4>${serie}º Ano</h4>`;
+                let pos = 1;
+                snapshot.forEach(doc => {
+                    html += `<p><strong>${pos}º</strong> - ${doc.data().nome} (${doc.data().mediaFinal.toFixed(2)})</p>`;
+                    pos++;
+                });
+                html += `</div>`;
+                
+                // Atualiza a div específica da série se já existir, senão cria
+                let divSerie = document.getElementById(`ranking-${serie}`);
+                if(!divSerie) {
+                    divSerie = document.createElement('div');
+                    divSerie.id = `ranking-${serie}`;
+                    document.getElementById('rankings').appendChild(divSerie);
+                }
+                divSerie.innerHTML = html;
+            });
+        });
+    }
+</script>
+</body>
+</html>
