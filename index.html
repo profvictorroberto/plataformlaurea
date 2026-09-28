@@ -1,140 +1,208 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Plataforma Láurea SESI</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
-        .header { background: #0d6efd; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .menu { display: flex; gap: 10px; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ccc; flex-wrap: wrap; }
-        .menu button { background: none; border: none; font-size: 15px; cursor: pointer; padding: 8px 15px; border-radius: 5px; color: #555; }
-        .menu button:hover { background: #e9ecef; }
-        .menu button.active { background: #0d6efd; color: white; font-weight: bold; }
-        
-        .container { max-width: 1000px; margin: 20px auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input, select, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        .btn-primary { background-color: #0d6efd; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; }
-        .btn-primary:hover { background-color: #0b5ed7; }
-        
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fafafa; }
-        
-        .btn-sm { padding: 5px 10px; font-size: 12px; cursor: pointer; border: none; border-radius: 3px; color: white; }
-        .btn-edit { background: #ffc107; color: black; }
-        .btn-del { background: #dc3545; }
-        
-        .btn-vote { width: 50px; padding: 8px; font-size: 14px; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .btn-up { background-color: #198754; }
-        .btn-down { background-color: #dc3545; }
-        
-        .competencia-row { border-bottom: 1px dashed #ccc; padding: 10px 0; display: flex; flex-direction: column; gap: 10px; }
-        .votacao-acoes { display: flex; gap: 10px; align-items: center; }
-        .obs-input { flex-grow: 1; padding: 8px; font-size: 13px; }
-        
-        .historico-votos { background: #eef2f5; padding: 8px; border-radius: 5px; font-size: 12px; color: #444; margin-top: 5px; }
-        .badge { display: inline-block; padding: 3px 6px; border-radius: 3px; background: #6c757d; color: white; font-size: 11px; margin-right: 5px; }
-        .badge-up { background: #198754; }
-        .badge-down { background: #dc3545; }
-        .ranking-box { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffe69c; margin-bottom: 15px; }
-        
-        .box-identificacao { background: #eef2f5; padding: 15px; border-radius: 8px; border: 2px solid #0d6efd; margin-bottom: 20px; }
-    </style>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plataforma Láurea SESI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--marinho:#0E2747;--azul:#1F4E9E;--azul-claro:#EDF2FA;--ouro:#9A7419;--ouro-claro:#F6EFD9;--papel:#F2F4F7;--linha:#D8DEE8;--texto:#1E2A3B;--suave:#5B6778;--ok:#1E7A4F;--ruim:#B3392F;--serif:'Source Serif 4',Georgia,'Times New Roman',serif;--sans:'IBM Plex Sans','Segoe UI',Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);font-size:15px;line-height:1.5;color:var(--texto);background:var(--papel)}
+h2,h3,h4{font-family:var(--serif);color:var(--marinho);margin:0;font-weight:600}
+:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+input,select,button{font:inherit}
+input,select{width:100%;height:42px;padding:0 12px;margin:0;border:1px solid #B9C2D0;border-radius:4px;background:#fff;color:var(--texto)}
+input:focus,select:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(31,78,158,.18)}
+label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0 6px}
+
+/* Botões */
+.btn-primary{height:42px;padding:0 22px;border:0;border-radius:4px;background:var(--marinho);color:#fff;font-weight:600;cursor:pointer;width:100%;transition:background .15s}
+.btn-primary:hover{background:var(--azul)}
+.btn-sm{height:32px;padding:0 12px;margin-left:6px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;border:1px solid var(--linha);color:var(--texto)}
+.btn-edit{color:var(--azul);border-color:#B7C6E2}.btn-edit:hover{background:var(--azul-claro)}
+.btn-del{color:var(--ruim);border-color:#E3B9B5}.btn-del:hover{background:#FBEFEE}
+.header .btn-sm{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.header .btn-sm:hover{background:rgba(255,255,255,.12)}
+
+/* Login */
+.login{display:grid;grid-template-columns:1.1fr 1fr;min-height:100vh}
+.login-marca{background:var(--marinho);color:#fff;padding:64px;display:flex;flex-direction:column;justify-content:center;border-right:4px solid var(--ouro)}
+.login-marca svg{width:64px;height:64px;margin-bottom:28px}
+.login-marca h1{font-family:var(--serif);font-size:44px;line-height:1.1;font-weight:600;margin:0 0 16px}
+.login-marca p{max-width:420px;font-size:17px;color:#C5D1E4;margin:0}
+.login-form{display:flex;flex-direction:column;justify-content:center;padding:64px;max-width:520px;width:100%;margin:auto}
+.login-form h2{font-size:26px;margin-bottom:6px}
+.login-form .sub{color:var(--suave);margin:0 0 28px}
+.login-form input{margin-bottom:16px}
+.login-form .btn-primary{margin-top:8px}
+
+/* Estrutura do app */
+.header{background:var(--marinho);color:#fff;padding:14px max(24px,calc((100% - 1120px)/2));display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--ouro)}
+.marca{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:21px;font-weight:600}
+.marca svg{width:30px;height:30px}
+.header .usuario{font-size:14px;color:#C5D1E4}
+.menu{display:flex;gap:4px;background:#fff;padding:0 max(24px,calc((100% - 1120px)/2));border-bottom:1px solid var(--linha);overflow-x:auto}
+.menu button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:14px 18px;margin:0;font-size:15px;font-weight:500;color:var(--suave);cursor:pointer;white-space:nowrap}
+.menu button:hover{color:var(--marinho)}
+.menu button.active{color:var(--marinho);border-bottom-color:var(--azul);font-weight:600}
+.container{max-width:1120px;margin:28px auto;padding:0 24px}
+.painel{background:#fff;border:1px solid var(--linha);border-radius:6px;padding:28px}
+.painel>h3{font-size:22px;margin-bottom:6px}
+.descricao{color:var(--suave);margin:0 0 20px}
+.grid-2{display:grid;grid-template-columns:1.35fr 1fr;gap:28px;align-items:start}
+.grid-2 .col-podios{position:sticky;top:16px}
+.col h3{font-size:22px;margin-bottom:4px}
+.form-linha{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+.form-linha input,.form-linha select{flex:1;min-width:160px;width:auto}
+.form-linha .btn-primary{width:auto;flex:0 0 auto}
+.card{border:1px solid var(--linha);border-radius:6px;padding:16px;margin-bottom:14px;background:#fff}
+.linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--linha)}
+.linha:last-child{border-bottom:0}
+.vazio{color:var(--suave);font-style:italic;margin:8px 0}
+
+/* Votação */
+.box-identificacao{background:var(--azul-claro);border-left:4px solid var(--azul);padding:16px;border-radius:0 6px 6px 0;margin:16px 0 22px}
+.box-identificacao h4,.etapa{font-size:16px;margin-bottom:10px}
+.box-identificacao select{font-weight:600}
+.aluno{border:1px solid var(--linha);border-radius:6px;margin-bottom:18px;background:#fff;overflow:hidden}
+.aluno-topo{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--papel);border-bottom:1px solid var(--linha)}
+.aluno-nome{font-family:var(--serif);font-size:19px;color:var(--marinho)}
+.aluno-media{display:flex;align-items:baseline;gap:8px;font-family:var(--serif);font-size:26px;font-weight:600;color:var(--azul);font-variant-numeric:tabular-nums}
+.aluno-media small{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--suave)}
+.competencia-row{padding:14px 18px;border-bottom:1px solid var(--linha);display:flex;flex-direction:column;gap:10px}
+.competencia-row:last-child{border-bottom:0}
+.competencia-row strong{font-size:14px;color:var(--marinho)}
+.historico-votos{background:var(--papel);border-left:3px solid var(--linha);padding:8px 12px;font-size:13px;color:var(--suave);margin-top:6px;display:grid;gap:4px}
+.historico-votos strong{color:var(--texto);font-weight:600}
+.badge{display:inline-block;min-width:38px;text-align:center;padding:1px 7px;border-radius:3px;color:#fff;font-size:12px;font-weight:600;margin-right:6px;background:var(--suave);font-variant-numeric:tabular-nums}
+.badge-up{background:var(--ok)}.badge-down{background:var(--ruim)}
+.votacao-acoes{display:flex;gap:8px;align-items:center}
+.obs-input{flex:1;height:38px;font-size:14px}
+.btn-vote{width:64px;height:38px;border-radius:4px;background:#fff;font-weight:600;cursor:pointer;transition:background .15s,color .15s}
+.btn-up{color:var(--ok);border:1px solid var(--ok)}.btn-up:hover{background:var(--ok);color:#fff}
+.btn-down{color:var(--ruim);border:1px solid var(--ruim)}.btn-down:hover{background:var(--ruim);color:#fff}
+.aviso-voto{font-size:13px;color:var(--suave)}
+.voto-ok{font-size:13px;font-weight:600;color:var(--ok)}
+.voto-ok::before{content:"";display:inline-block;width:6px;height:11px;margin:0 8px 2px 2px;border:solid var(--ok);border-width:0 2px 2px 0;transform:rotate(45deg)}
+
+/* Pódios */
+.podio{border:1px solid var(--linha);border-top:3px solid var(--ouro);border-radius:6px;padding:16px 18px 10px;margin-bottom:16px;background:#fff}
+.podio h4{font-size:17px;margin-bottom:8px}
+.pos{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--linha)}
+.medalha{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;background:#C9A227;color:var(--marinho)}
+.pos-2 .medalha{background:#B4BDCA}.pos-3 .medalha{background:#B87333;color:#fff}
+.pos-1 .pos-nome{font-weight:600;color:var(--marinho)}
+.pos-nota{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--marinho);font-variant-numeric:tabular-nums}
+.pos-1 .pos-nota{color:var(--ouro)}
+
+@media(max-width:860px){
+ .login{grid-template-columns:1fr}.login-marca{padding:36px 28px;border-right:0;border-bottom:4px solid var(--ouro)}.login-marca h1{font-size:32px}.login-form{padding:32px 28px}
+ .grid-2{grid-template-columns:1fr}.grid-2 .col-podios{position:static}
+ .painel{padding:18px}.votacao-acoes{flex-wrap:wrap}.obs-input{flex-basis:100%}.btn-vote{flex:1}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="laurea" viewBox="0 0 64 64" fill="none" stroke="#C9A227" stroke-width="2.4" stroke-linecap="round"><path d="M32 58C15 54 6 40 8 22M32 58c17-4 26-18 24-36"/><path d="M11 40c-5-2-6-7-5-10 4 0 7 3 5 10zM9 28c-4-3-4-8-2-11 4 1 6 5 2 11zM12 17c-2-4 0-8 3-10 3 3 2 8-3 10zM53 40c5-2 6-7 5-10-4 0-7 3-5 10zM55 28c4-3 4-8 2-11-4 1-6 5-2 11zM52 17c2-4 0-8-3-10-3 3-2 8 3 10z"/><path d="M32 46V26m-7 6 7-9 7 9"/></symbol></svg>
 
-<div class="container" id="tela-login">
-    <h2 style="text-align: center; color: #0d6efd;">Plataforma Láurea SESI</h2>
-    <input type="email" id="email" placeholder="E-mail de Acesso Institucional" style="width: 100%;">
-    <input type="password" id="senha" placeholder="Senha" style="width: 100%;">
-    <button class="btn-primary" onclick="login()">Entrar</button>
-</div>
+<main class="login" id="tela-login">
+    <section class="login-marca">
+        <svg aria-hidden="true"><use href="#laurea"/></svg>
+        <h1>Plataforma Láurea SESI</h1>
+        <p>Reconhecimento aos estudantes que se destacam em desempenho, comportamento, participação e frequência.</p>
+    </section>
+    <section class="login-form">
+        <h2>Acesso institucional</h2>
+        <p class="sub">Entre com o e-mail e a senha fornecidos pela escola.</p>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" autocomplete="username">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+        <button class="btn-primary" onclick="login()">Entrar</button>
+    </section>
+</main>
 
 <div id="tela-app" style="display:none;">
-    <div class="header">
-        <h3 style="margin: 0;">Plataforma Láurea SESI</h3>
-        <div>
-            <span style="margin-right: 15px; font-size: 14px;">Acesso Professor</span>
-            <button onclick="sair()" class="btn-sm" style="background: #343a40;">Sair</button>
-        </div>
-    </div>
+    <header class="header">
+        <div class="marca"><svg aria-hidden="true"><use href="#laurea"/></svg>Plataforma Láurea SESI</div>
+        <div><span class="usuario">Acesso professor</span><button onclick="sair()" class="btn-sm" style="margin-left:16px">Sair</button></div>
+    </header>
 
-    <div class="menu">
-        <button id="tab-btn-votacao" class="active" onclick="mudarAba('votacao')">Votação & Pódios</button>
+    <nav class="menu">
+        <button id="tab-btn-votacao" class="active" onclick="mudarAba('votacao')">Votação e pódios</button>
         <button id="tab-btn-professores" onclick="mudarAba('professores')">Professores</button>
         <button id="tab-btn-turmas" onclick="mudarAba('turmas')">Turmas</button>
         <button id="tab-btn-alunos" onclick="mudarAba('alunos')">Alunos</button>
-    </div>
+    </nav>
 
-    <!-- ABA 1: VOTAÇÃO -->
     <div id="aba-votacao" class="container aba-conteudo">
         <div class="grid-2">
-            <div>
-                <h3>Painel de Votação</h3>
-                
-                <!-- Identificação do Professor -->
+            <div class="painel col">
+                <h3>Painel de votação</h3>
                 <div class="box-identificacao">
-                    <h4 style="margin: 0 0 10px 0; color: #0d6efd;">1. Quem está votando?</h4>
-                    <select id="select-prof-votante" style="width: 100%; font-weight: bold;" onchange="atualizarTelas()">
-                        <option value="">-- Selecione seu nome na lista --</option>
+                    <h4>1. Quem está votando?</h4>
+                    <select id="select-prof-votante" onchange="atualizarTelas()">
+                        <option value="">Selecione seu nome na lista</option>
                     </select>
                 </div>
-
-                <h4 style="margin: 0 0 10px 0;">2. Selecione a Turma</h4>
-                <select id="filtro-turma-votacao" style="width: 100%; margin-bottom: 15px;" onchange="atualizarTelas()">
-                    <option value="">-- Selecione uma Turma --</option>
+                <h4 class="etapa">2. Selecione a turma</h4>
+                <select id="filtro-turma-votacao" style="margin-bottom:20px" onchange="atualizarTelas()">
+                    <option value="">Selecione uma turma</option>
                 </select>
-                
-                <div id="lista-votacao"><p style="color: #666;">Selecione uma turma acima.</p></div>
+                <div id="lista-votacao"><p class="vazio">Selecione uma turma acima.</p></div>
             </div>
-            <div>
-                <h3>Pódios Oficiais (Top 3)</h3>
+            <div class="col col-podios">
+                <h3 style="margin-bottom:14px">Pódios oficiais</h3>
                 <div id="rankings"></div>
             </div>
         </div>
     </div>
 
-    <!-- ABA 2: PROFESSORES -->
-    <div id="aba-professores" class="container aba-conteudo" style="display: none;">
-        <h3>Cadastrar Professores</h3>
-        <p style="font-size: 14px; color: #666;">Adicione o nome dos professores para que eles possam selecionar quem são na hora de votar.</p>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="nomeNovoProf" placeholder="Nome do Professor (Ex: João Silva)" style="flex-grow: 1;">
-            <button class="btn-primary" style="width: auto; padding: 0 20px;" onclick="salvarProfessor()">Adicionar</button>
+    <div id="aba-professores" class="container aba-conteudo" style="display:none;">
+        <div class="painel">
+            <h3>Cadastrar professores</h3>
+            <p class="descricao">Os professores cadastrados aparecem na lista de identificação da tela de votação.</p>
+            <div class="form-linha">
+                <input type="text" id="nomeNovoProf" placeholder="Nome do professor">
+                <button class="btn-primary" onclick="salvarProfessor()">Adicionar</button>
+            </div>
+            <div id="lista-professores-admin"></div>
         </div>
-        <div id="lista-professores-admin"></div>
     </div>
 
-    <!-- ABA 3: TURMAS -->
-    <div id="aba-turmas" class="container aba-conteudo" style="display: none;">
-        <h3>Criar Nova Turma</h3>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="nomeNovaTurma" placeholder="Ex: 6º Ano A" style="flex-grow: 1;">
-            <select id="serieNovaTurma" style="width: 150px;">
-                <option value="6">6º Ano</option>
-                <option value="7">7º Ano</option>
-                <option value="8">8º Ano</option>
-                <option value="9">9º Ano</option>
-            </select>
-            <button class="btn-primary" style="width: auto; padding: 0 20px;" onclick="salvarTurma()">Criar Turma</button>
+    <div id="aba-turmas" class="container aba-conteudo" style="display:none;">
+        <div class="painel">
+            <h3>Criar nova turma</h3>
+            <p class="descricao">Cada turma pertence a uma série, que define em qual pódio seus alunos competem.</p>
+            <div class="form-linha">
+                <input type="text" id="nomeNovaTurma" placeholder="Ex.: 6º Ano A">
+                <select id="serieNovaTurma" style="flex:0 0 150px">
+                    <option value="6">6º Ano</option><option value="7">7º Ano</option><option value="8">8º Ano</option><option value="9">9º Ano</option>
+                </select>
+                <button class="btn-primary" onclick="salvarTurma()">Criar turma</button>
+            </div>
+            <div id="lista-turmas-admin"></div>
         </div>
-        <div id="lista-turmas-admin"></div>
     </div>
 
-    <!-- ABA 4: ALUNOS -->
-    <div id="aba-alunos" class="container aba-conteudo" style="display: none;">
-        <h3>Cadastrar / Gerenciar Alunos</h3>
-        <div class="card" style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <select id="select-turma-cadastro" style="flex-grow: 1; min-width: 200px;" onchange="atualizarTelas()">
-                <option value="">-- Escolha a Turma --</option>
-            </select>
-            <input type="text" id="nomeNovoAluno" placeholder="Nome do Aluno" style="flex-grow: 2; min-width: 200px;">
-            <input type="number" id="mediaNovoAluno" placeholder="Média Atual (Ex: 8.5)" step="0.1" style="width: 150px;">
-            <button class="btn-primary" style="width: auto; padding: 0 20px;" onclick="salvarAluno()">Adicionar Aluno</button>
+    <div id="aba-alunos" class="container aba-conteudo" style="display:none;">
+        <div class="painel">
+            <h3>Cadastrar e gerenciar alunos</h3>
+            <p class="descricao">Escolha a turma, informe o nome e a média atual do aluno.</p>
+            <div class="form-linha">
+                <select id="select-turma-cadastro" onchange="atualizarTelas()"><option value="">Escolha a turma</option></select>
+                <input type="text" id="nomeNovoAluno" placeholder="Nome do aluno" style="flex:2">
+                <input type="number" id="mediaNovoAluno" placeholder="Média atual (ex.: 8,5)" step="0.1" style="flex:0 0 170px">
+                <button class="btn-primary" onclick="salvarAluno()">Adicionar aluno</button>
+            </div>
+            <div id="lista-alunos-admin"><p class="vazio">Selecione uma turma acima.</p></div>
         </div>
-        <div id="lista-alunos-admin"><p style="color: #666;">Selecione uma turma acima.</p></div>
     </div>
 </div>
 
@@ -157,6 +225,9 @@
     let listaDeTurmas = [];
     let listaDeAlunos = [];
     let listaDeProfessores = [];
+
+    // Escapa texto antes de inserir no HTML (evita quebra com aspas/apóstrofos)
+    function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     // 1. LOGIN E NAVEGAÇÃO
     function login() {
@@ -211,14 +282,14 @@
         let optProfs = `<option value="">-- Selecione seu nome na lista --</option>`;
         let htmlProfs = "";
         listaDeProfessores.forEach(p => {
-            optProfs += `<option value="${p.nome}">${p.nome}</option>`;
+            optProfs += `<option value="${esc(p.nome)}">${esc(p.nome)}</option>`;
             htmlProfs += `
-                <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-                    <span><strong>${p.nome}</strong></span>
+                <div class="linha">
+                    <span><strong>${esc(p.nome)}</strong></span>
                     <button class="btn-sm btn-del" onclick="excluirProfessor('${p.id}')">Remover</button>
                 </div>`;
         });
-        document.getElementById('lista-professores-admin').innerHTML = htmlProfs || "<p>Nenhum professor cadastrado.</p>";
+        document.getElementById('lista-professores-admin').innerHTML = htmlProfs || "<p class='vazio'>Nenhum professor cadastrado.</p>";
         
         const selectProf = document.getElementById('select-prof-votante');
         selectProf.innerHTML = optProfs;
@@ -228,7 +299,7 @@
 
         // 3.1 ATUALIZAR DROPDOWNS DE TURMAS
         let options = `<option value="">-- Selecione uma Turma --</option>`;
-        listaDeTurmas.forEach(t => options += `<option value="${t.id}">${t.nome} (${t.serie}º Ano)</option>`);
+        listaDeTurmas.forEach(t => options += `<option value="${t.id}">${esc(t.nome)} (${t.serie}º Ano)</option>`);
         
         const selVotacao = document.getElementById('filtro-turma-votacao');
         const selCadastro = document.getElementById('select-turma-cadastro');
@@ -245,35 +316,35 @@
         let htmlTurmas = "";
         listaDeTurmas.forEach(t => {
             htmlTurmas += `
-                <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-                    <span><strong>${t.nome}</strong> - ${t.serie}º Ano</span>
+                <div class="linha">
+                    <span><strong>${esc(t.nome)}</strong> - ${t.serie}º Ano</span>
                     <div>
-                        <button class="btn-sm btn-edit" onclick="editarTurma('${t.id}', '${t.nome}')">Editar</button>
+                        <button class="btn-sm btn-edit" onclick="editarTurma('${t.id}')">Editar</button>
                         <button class="btn-sm btn-del" onclick="excluirTurma('${t.id}')">Apagar Tudo</button>
                     </div>
                 </div>`;
         });
-        document.getElementById('lista-turmas-admin').innerHTML = htmlTurmas || "<p>Nenhuma turma criada.</p>";
+        document.getElementById('lista-turmas-admin').innerHTML = htmlTurmas || "<p class='vazio'>Nenhuma turma criada.</p>";
 
         // 3.3 ATUALIZAR LISTA DE ALUNOS
         const idAdmin = selCadastro.value;
         const divAdmin = document.getElementById('lista-alunos-admin');
         if (!idAdmin) {
-            divAdmin.innerHTML = "<p style='color: #666;'>Selecione uma turma acima.</p>";
+            divAdmin.innerHTML = "<p class='vazio'>Selecione uma turma acima.</p>";
         } else {
             let alunosFiltro = alunosValidos.filter(a => a.turmaId === idAdmin).sort((a,b) => a.nome.localeCompare(b.nome));
             let htmlAlunos = "";
             alunosFiltro.forEach(a => {
                 htmlAlunos += `
-                    <div class="card" style="display: flex; justify-content: space-between; padding: 10px;">
-                        <span><strong>${a.nome}</strong> - Média: ${a.mediaFinal.toFixed(2)}</span>
+                    <div class="linha">
+                        <span><strong>${esc(a.nome)}</strong> - Média: ${a.mediaFinal.toFixed(2)}</span>
                         <div>
-                            <button class="btn-sm btn-edit" onclick="editarAluno('${a.id}', '${a.nome}', ${a.mediaFinal})">Editar</button>
+                            <button class="btn-sm btn-edit" onclick="editarAluno('${a.id}')">Editar</button>
                             <button class="btn-sm btn-del" onclick="excluirAluno('${a.id}')">Excluir</button>
                         </div>
                     </div>`;
             });
-            divAdmin.innerHTML = htmlAlunos || "<p>Nenhum aluno nesta turma.</p>";
+            divAdmin.innerHTML = htmlAlunos || "<p class='vazio'>Nenhum aluno nesta turma.</p>";
         }
 
         // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO (COM TRAVA DE PROFESSOR)
@@ -281,7 +352,7 @@
         const divVotacao = document.getElementById('lista-votacao');
         
         if (!idVot) {
-            divVotacao.innerHTML = "<p style='color: #666;'>Selecione uma turma acima.</p>";
+            divVotacao.innerHTML = "<p class='vazio'>Selecione uma turma acima.</p>";
         } else {
             let alunosVot = alunosValidos.filter(a => a.turmaId === idVot).sort((a,b) => a.nome.localeCompare(b.nome));
             let htmlVot = "";
@@ -298,7 +369,7 @@
                             const v = votos[key];
                             const badge = v.valor > 0 ? 'badge-up' : 'badge-down';
                             const sinal = v.valor > 0 ? '+' : '';
-                            logHtml += `<div><span class="badge ${badge}">${sinal}${v.valor}</span> <strong>${v.prof}</strong>: <em>${v.obs || 'Sem obs'}</em></div>`;
+                            logHtml += `<div><span class="badge ${badge}">${sinal}${v.valor}</span> <strong>${esc(v.prof)}</strong>: <em>${esc(v.obs || 'Sem justificativa')}</em></div>`;
                             
                             // Verifica se o professor SELECIONADO já votou
                             if (selectProf.value && v.prof === selectProf.value) jaVotou = true;
@@ -309,9 +380,9 @@
                     // Define o que mostrar na área de ação (Botões, Aviso de Bloqueio, ou Pedido para selecionar o nome)
                     let acoes = "";
                     if (!selectProf.value) {
-                        acoes = `<div style="font-size: 12px; color: #dc3545; font-style: italic;">Selecione seu nome lá em cima para votar.</div>`;
+                        acoes = `<div class="aviso-voto">Selecione seu nome na etapa 1 para votar.</div>`;
                     } else if (jaVotou) {
-                        acoes = `<div style="color: #198754; font-weight: bold; font-size: 13px;">✅ Você já votou!</div>`;
+                        acoes = `<div class="voto-ok">Você já votou nesta competência</div>`;
                     } else {
                         acoes = `
                             <div class="votacao-acoes">
@@ -325,15 +396,15 @@
                 };
 
                 htmlVot += `
-                    <div class="card">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; margin-bottom: 10px;">
-                            <strong style="font-size: 18px;">${aluno.nome}</strong>
-                            <span style="font-size: 18px;">Média: <strong style="color: #0d6efd;">${aluno.mediaFinal.toFixed(2)}</strong></span>
+                    <div class="aluno">
+                        <div class="aluno-topo">
+                            <strong class="aluno-nome">${esc(aluno.nome)}</strong>
+                            <span class="aluno-media"><small>Média</small>${aluno.mediaFinal.toFixed(2)}</span>
                         </div>
                         ${renderComp('Comportamento')} ${renderComp('Participação')} ${renderComp('Frequência')}
                     </div>`;
             });
-            divVotacao.innerHTML = htmlVot || "<p>Nenhum aluno nesta turma.</p>";
+            divVotacao.innerHTML = htmlVot || "<p class='vazio'>Nenhum aluno nesta turma.</p>";
         }
 
         // 3.5 ATUALIZAR OS PÓDIOS
@@ -343,11 +414,11 @@
             let pódio = document.createElement('div');
             let alunosSerie = alunosValidos.filter(a => a.serie === serie).sort((a, b) => b.mediaFinal - a.mediaFinal).slice(0, 3);
             
-            let htmlRank = `<div class="ranking-box"><h4 style="margin-top:0; color:#856404;">Pódio - ${serie}º Ano</h4>`;
+            let htmlRank = `<div class="podio"><h4>${serie}º ano</h4>`;
             if (alunosSerie.length === 0) {
-                htmlRank += `<p style="font-size: 13px; color: #666;">Aguardando alunos...</p>`;
+                htmlRank += `<p class="vazio">Aguardando alunos.</p>`;
             } else {
-                alunosSerie.forEach((a, i) => htmlRank += `<p style="margin: 5px 0;"><strong>${i + 1}º</strong> ${a.nome} - <span style="font-weight:bold; color:#d39e00;">Nota: ${a.mediaFinal.toFixed(2)}</span></p>`);
+                alunosSerie.forEach((a, i) => htmlRank += `<div class="pos pos-${i + 1}"><span class="medalha">${i + 1}</span><span class="pos-nome">${esc(a.nome)}</span><span class="pos-nota">${a.mediaFinal.toFixed(2)}</span></div>`);
             }
             htmlRank += `</div>`;
             pódio.innerHTML = htmlRank;
@@ -373,7 +444,10 @@
         if (nome) db.collection("turmas").add({ nome, serie }).then(() => document.getElementById('nomeNovaTurma').value = "");
     }
 
-    function editarTurma(id, nomeAtual) {
+    function editarTurma(id) {
+        const t = listaDeTurmas.find(x => x.id === id);
+        if (!t) return;
+        const nomeAtual = t.nome;
         const novoNome = prompt("Novo nome da turma:", nomeAtual);
         if (novoNome && novoNome.trim() !== "") db.collection("turmas").doc(id).update({ nome: novoNome });
     }
@@ -405,7 +479,10 @@
         });
     }
 
-    function editarAluno(id, nomeAtual, mediaAtual) {
+    function editarAluno(id) {
+        const al = listaDeAlunos.find(x => x.id === id);
+        if (!al) return;
+        const nomeAtual = al.nome, mediaAtual = al.mediaFinal;
         const novoNome = prompt("Novo nome:", nomeAtual) || nomeAtual;
         const novaMediaStr = prompt("Alterar média final:", mediaAtual);
         if (novaMediaStr !== null) {
