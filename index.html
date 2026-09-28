@@ -14,7 +14,7 @@
         .btn-vote { width: 45px; padding: 5px; margin: 2px; font-size: 12px; }
         .btn-up { background-color: #198754; }
         .btn-down { background-color: #dc3545; }
-        .ranking-box { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffe69c; }
+        .ranking-box { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffe69c; margin-bottom: 15px; }
         .competencia-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #ccc; padding: 5px 0; }
     </style>
     <!-- Firebase SDKs -->
@@ -68,11 +68,14 @@
 </div>
 
 <script>
-    // COLE SUAS CREDENCIAIS AQUI
+    // CONFIGURAÇÃO REAL DO FIREBASE
     const firebaseConfig = {
-        apiKey: "SUA_API_KEY",
-        authDomain: "SEU_PROJETO.firebaseapp.com",
-        projectId: "SEU_PROJETO",
+        apiKey: "AIzaSyB3YT9ThbQAL79MvXWLWkwn7wnRy7QmwWg",
+        authDomain: "laureasesi.firebaseapp.com",
+        projectId: "laureasesi",
+        storageBucket: "laureasesi.firebasestorage.app",
+        messagingSenderId: "323875516520",
+        appId: "1:323875516520:web:4c2eec01ccaafa23b04bdd"
     };
     
     firebase.initializeApp(firebaseConfig);
@@ -91,7 +94,7 @@
                 document.getElementById('tela-app').style.display = 'block';
                 iniciarSistema();
             })
-            .catch(error => alert("Erro ao logar. Verifique as credenciais."));
+            .catch(error => alert("Erro ao logar. Verifique se o e-mail e a senha estão corretos no Firebase."));
     }
 
     function sair() {
@@ -115,7 +118,7 @@
             alert("Aluno registrado com sucesso!");
             document.getElementById('nomeAluno').value = '';
             document.getElementById('mediaAluno').value = '';
-        });
+        }).catch(error => alert("Erro ao cadastrar aluno: " + error));
     }
 
     // Sistema de Votação Seguro (Transação)
@@ -131,6 +134,7 @@
                 let mediaAtual = doc.data().mediaFinal;
                 let novaMedia = mediaAtual + valor;
 
+                // Limita a nota entre 0 e 10
                 if (novaMedia > 10) novaMedia = 10;
                 if (novaMedia < 0) novaMedia = 0;
 
@@ -146,7 +150,8 @@
             });
             alert("Voto computado!");
         } catch (error) {
-            alert("Erro ao computar voto.");
+            alert("Erro ao computar voto. Tente novamente.");
+            console.error(error);
         }
     }
 
@@ -196,9 +201,14 @@
                 let html = `<div class="ranking-box"><h4>${serie}º Ano</h4>`;
                 let pos = 1;
                 snapshot.forEach(doc => {
-                    html += `<p><strong>${pos}º</strong> - ${doc.data().nome} (${doc.data().mediaFinal.toFixed(2)})</p>`;
+                    html += `<p style="margin: 5px 0;"><strong>${pos}º</strong> - ${doc.data().nome} (${doc.data().mediaFinal.toFixed(2)})</p>`;
                     pos++;
                 });
+                
+                if (snapshot.empty) {
+                    html += `<p style="margin: 5px 0; font-size: 14px; color: #666;">Nenhum aluno cadastrado.</p>`;
+                }
+
                 html += `</div>`;
                 
                 // Atualiza a div específica da série se já existir, senão cria
