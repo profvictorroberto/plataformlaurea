@@ -70,7 +70,7 @@
         <div class="grid-2">
             <div>
                 <h3>Painel de Votação</h3>
-                <select id="filtro-turma-votacao" style="width: 100%; margin-bottom: 15px;" onchange="carregarAlunosParaVotacao()">
+                <select id="filtro-turma-votacao" style="width: 100%; margin-bottom: 15px;" onchange="atualizarTelas()">
                     <option value="">-- Selecione uma Turma --</option>
                 </select>
                 <div id="lista-votacao"><p style="color: #666;">Selecione uma turma acima.</p></div>
@@ -102,7 +102,7 @@
     <div id="aba-alunos" class="container aba-conteudo" style="display: none;">
         <h3>Cadastrar / Gerenciar Alunos</h3>
         <div class="card" style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <select id="select-turma-cadastro" style="flex-grow: 1; min-width: 200px;" onchange="carregarAlunosAdmin()">
+            <select id="select-turma-cadastro" style="flex-grow: 1; min-width: 200px;" onchange="atualizarTelas()">
                 <option value="">-- Escolha a Turma --</option>
             </select>
             <input type="text" id="nomeNovoAluno" placeholder="Nome do Aluno" style="flex-grow: 2; min-width: 200px;">
@@ -128,7 +128,10 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     let professorLogado = "";
+    
+    // ESTADO GLOBAL DA APLICAÇÃO
     let listaDeTurmas = [];
+    let listaDeAlunos = [];
 
     // 1. LOGIN E NAVEGAÇÃO
     function login() {
@@ -150,107 +153,73 @@
         document.querySelectorAll('.menu button').forEach(el => el.classList.remove('active'));
         document.getElementById(`aba-${abaId}`).style.display = 'block';
         document.getElementById(`tab-btn-${abaId}`).classList.add('active');
+        atualizarTelas(); // Força atualização ao trocar de aba
     }
 
+    // 2. ESCUTAR DADOS EM TEMPO REAL (O coração do sistema)
     function iniciarSistema() {
-        carregarTurmas();
-        iniciarRankings();
-    }
-
-    // 2. LÓGICA DE TURMAS (Ordenação feita no JS para evitar erro de Index no Firebase)
-    function carregarTurmas() {
-        db.collection("turmas").onSnapshot(snapshot => {
-            let turmasTemp = [];
-            snapshot.forEach(doc => turmasTemp.push({ id: doc.id, ...doc.data() }));
-
-            // Ordena as turmas por série e depois ordem alfabética localmente
-            turmasTemp.sort((a, b) => {
-                if (a.serie === b.serie) return a.nome.localeCompare(b.nome);
-                return a.serie - b.serie;
-            });
-
-            listaDeTurmas = turmasTemp;
-            let optionsDropdown = `<option value="">-- Selecione uma Turma --</option>`;
-            let htmlAdmin = "";
-
-            listaDeTurmas.forEach(t => {
-                optionsDropdown += `<option value="${t.id}">${t.nome} (${t.serie}º Ano)</option>`;
-                htmlAdmin += `
-                    <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-                        <span><strong>${t.nome}</strong> - ${t.serie}º Ano</span>
-                        <div>
-                            <button class="btn-sm btn-edit" onclick="editarTurma('${t.id}', '${t.nome}')">Editar</button>
-                            <button class="btn-sm btn-del" onclick="excluirTurma('${t.id}')">Apagar</button>
-                        </div>
-                    </div>`;
-            });
-
-            document.getElementById('filtro-turma-votacao').innerHTML = optionsDropdown;
-            document.getElementById('select-turma-cadastro').innerHTML = optionsDropdown;
-            document.getElementById('lista-turmas-admin').innerHTML = htmlAdmin || "<p>Nenhuma turma criada.</p>";
+        db.collection("turmas").onSnapshot(snap => {
+            listaDeTurmas = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            atualizarTelas();
+        });
+        
+        db.collection("alunos").onSnapshot(snap => {
+            listaDeAlunos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            atualizarTelas();
         });
     }
 
-    function salvarTurma() {
-        const nome = document.getElementById('nomeNovaTurma').value.trim();
-        const serie = document.getElementById('serieNovaTurma').value;
-        if (!nome) return alert("Digite o nome da turma!");
+    // 3. MOTOR CENTRAL DE RENDERIZAÇÃO
+    function atualizarTelas() {
+        // SEGURANÇA: Filtra alunos garantindo que a turma deles ainda existe
+        const turmasIds = listaDeTurmas.map(t => t.id);
+        const alunosValidos = listaDeAlunos.filter(a => turmasIds.includes(a.turmaId));
 
-        db.collection("turmas").add({ nome, serie })
-          .then(() => document.getElementById('nomeNovaTurma').value = "")
-          .catch(err => alert("Erro ao salvar: " + err.message));
-    }
+        // Ordenar Turmas localmente
+        listaDeTurmas.sort((a, b) => {
+            if (a.serie === b.serie) return a.nome.localeCompare(b.nome);
+            return a.serie - b.serie;
+        });
 
-    function editarTurma(id, nomeAtual) {
-        const novoNome = prompt("Novo nome da turma:", nomeAtual);
-        if (novoNome && novoNome.trim() !== "") db.collection("turmas").doc(id).update({ nome: novoNome });
-    }
+        // 3.1 ATUALIZAR DROPDOWNS DE TURMAS
+        let options = `<option value="">-- Selecione uma Turma --</option>`;
+        listaDeTurmas.forEach(t => options += `<option value="${t.id}">${t.nome} (${t.serie}º Ano)</option>`);
+        
+        const selVotacao = document.getElementById('filtro-turma-votacao');
+        const selCadastro = document.getElementById('select-turma-cadastro');
+        const valVotacao = selVotacao.value; 
+        const valCadastro = selCadastro.value;
+        
+        selVotacao.innerHTML = options;
+        selCadastro.innerHTML = options;
+        
+        if (turmasIds.includes(valVotacao)) selVotacao.value = valVotacao;
+        if (turmasIds.includes(valCadastro)) selCadastro.value = valCadastro;
 
-    function excluirTurma(id) {
-        if (confirm("Apagar turma? Os alunos não serão apagados automaticamente, remova-os antes.")) {
-            db.collection("turmas").doc(id).delete();
-        }
-    }
+        // 3.2 ATUALIZAR LISTA DE TURMAS (Aba Gerenciar Turmas)
+        let htmlTurmas = "";
+        listaDeTurmas.forEach(t => {
+            htmlTurmas += `
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+                    <span><strong>${t.nome}</strong> - ${t.serie}º Ano</span>
+                    <div>
+                        <button class="btn-sm btn-edit" onclick="editarTurma('${t.id}', '${t.nome}')">Editar</button>
+                        <button class="btn-sm btn-del" onclick="excluirTurma('${t.id}')">Apagar Tudo</button>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('lista-turmas-admin').innerHTML = htmlTurmas || "<p>Nenhuma turma criada.</p>";
 
-    // 3. LÓGICA DE ALUNOS (Ordenação local)
-    function salvarAluno() {
-        const turmaId = document.getElementById('select-turma-cadastro').value;
-        const nome = document.getElementById('nomeNovoAluno').value.trim();
-        const media = parseFloat(document.getElementById('mediaNovoAluno').value);
-
-        if (!turmaId) return alert("Selecione uma turma primeiro!");
-        if (!nome || isNaN(media)) return alert("Preencha o nome e a média!");
-
-        const turmaObj = listaDeTurmas.find(t => t.id === turmaId);
-
-        db.collection("alunos").add({
-            nome: nome,
-            turmaId: turmaId,
-            serie: turmaObj.serie, 
-            mediaInicial: media,
-            mediaFinal: media,
-            votosRegistrados: {}
-        }).then(() => {
-            document.getElementById('nomeNovoAluno').value = "";
-            document.getElementById('mediaNovoAluno').value = "";
-        }).catch(err => alert("Erro ao salvar aluno: " + err.message));
-    }
-
-    function carregarAlunosAdmin() {
-        const turmaId = document.getElementById('select-turma-cadastro').value;
+        // 3.3 ATUALIZAR LISTA DE ALUNOS (Aba Gerenciar Alunos)
+        const idAdmin = selCadastro.value;
         const divAdmin = document.getElementById('lista-alunos-admin');
-        if (!turmaId) { divAdmin.innerHTML = "<p>Selecione uma turma.</p>"; return; }
-
-        db.collection("alunos").where("turmaId", "==", turmaId).onSnapshot(snapshot => {
-            let alunosTemp = [];
-            snapshot.forEach(doc => alunosTemp.push({ id: doc.id, ...doc.data() }));
-            
-            // Ordena alfabeticamente no JS
-            alunosTemp.sort((a, b) => a.nome.localeCompare(b.nome));
-
-            let html = "";
-            alunosTemp.forEach(a => {
-                html += `
+        if (!idAdmin) {
+            divAdmin.innerHTML = "<p style='color: #666;'>Selecione uma turma acima.</p>";
+        } else {
+            let alunosFiltro = alunosValidos.filter(a => a.turmaId === idAdmin).sort((a,b) => a.nome.localeCompare(b.nome));
+            let htmlAlunos = "";
+            alunosFiltro.forEach(a => {
+                htmlAlunos += `
                     <div class="card" style="display: flex; justify-content: space-between; padding: 10px;">
                         <span><strong>${a.nome}</strong> - Média: ${a.mediaFinal.toFixed(2)}</span>
                         <div>
@@ -259,7 +228,116 @@
                         </div>
                     </div>`;
             });
-            divAdmin.innerHTML = html || "<p>Nenhum aluno nesta turma.</p>";
+            divAdmin.innerHTML = htmlAlunos || "<p>Nenhum aluno nesta turma.</p>";
+        }
+
+        // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO
+        const idVot = selVotacao.value;
+        const divVotacao = document.getElementById('lista-votacao');
+        if (!idVot) {
+            divVotacao.innerHTML = "<p style='color: #666;'>Selecione uma turma acima.</p>";
+        } else {
+            let alunosVot = alunosValidos.filter(a => a.turmaId === idVot).sort((a,b) => a.nome.localeCompare(b.nome));
+            let htmlVot = "";
+            alunosVot.forEach(aluno => {
+                const votos = aluno.votosRegistrados || {};
+                const renderComp = (compNome) => {
+                    let logHtml = "";
+                    let jaVotou = false;
+                    for (let key in votos) {
+                        if (votos[key].competencia === compNome) {
+                            const v = votos[key];
+                            const badge = v.valor > 0 ? 'badge-up' : 'badge-down';
+                            const sinal = v.valor > 0 ? '+' : '';
+                            logHtml += `<div><span class="badge ${badge}">${sinal}${v.valor}</span> <strong>${v.prof}</strong>: <em>${v.obs || 'Sem obs'}</em></div>`;
+                            if (v.prof === professorLogado) jaVotou = true;
+                        }
+                    }
+                    if (logHtml === "") logHtml = "<em>Nenhum voto.</em>";
+
+                    let acoes = jaVotou 
+                        ? `<div style="color: #198754; font-weight: bold; font-size: 13px;">✅ Você já votou!</div>`
+                        : `<div class="votacao-acoes">
+                                <input type="text" id="obs-${aluno.id}-${compNome}" class="obs-input" placeholder="Justificativa (Opcional)">
+                                <button class="btn-vote btn-up" onclick="votar('${aluno.id}', '${compNome}', 0.5, 'obs-${aluno.id}-${compNome}')">+0,5</button>
+                                <button class="btn-vote btn-down" onclick="votar('${aluno.id}', '${compNome}', -0.5, 'obs-${aluno.id}-${compNome}')">-0,5</button>
+                           </div>`;
+
+                    return `<div class="competencia-row"><div><strong>${compNome}</strong><div class="historico-votos">${logHtml}</div></div>${acoes}</div>`;
+                };
+
+                htmlVot += `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; margin-bottom: 10px;">
+                            <strong style="font-size: 18px;">${aluno.nome}</strong>
+                            <span style="font-size: 18px;">Média: <strong style="color: #0d6efd;">${aluno.mediaFinal.toFixed(2)}</strong></span>
+                        </div>
+                        ${renderComp('Comportamento')} ${renderComp('Participação')} ${renderComp('Frequência')}
+                    </div>`;
+            });
+            divVotacao.innerHTML = htmlVot || "<p>Nenhum aluno nesta turma.</p>";
+        }
+
+        // 3.5 ATUALIZAR OS PÓDIOS (FILTRADO DE FANTASMAS)
+        const divRankings = document.getElementById('rankings');
+        divRankings.innerHTML = ''; 
+        ['6', '7', '8', '9'].forEach(serie => {
+            let pódio = document.createElement('div');
+            let alunosSerie = alunosValidos.filter(a => a.serie === serie).sort((a, b) => b.mediaFinal - a.mediaFinal).slice(0, 3);
+            
+            let htmlRank = `<div class="ranking-box"><h4 style="margin-top:0; color:#856404;">Pódio - ${serie}º Ano</h4>`;
+            if (alunosSerie.length === 0) {
+                htmlRank += `<p style="font-size: 13px; color: #666;">Aguardando alunos...</p>`;
+            } else {
+                alunosSerie.forEach((a, i) => htmlRank += `<p style="margin: 5px 0;"><strong>${i + 1}º</strong> ${a.nome} - <span style="font-weight:bold; color:#d39e00;">Nota: ${a.mediaFinal.toFixed(2)}</span></p>`);
+            }
+            htmlRank += `</div>`;
+            pódio.innerHTML = htmlRank;
+            divRankings.appendChild(pódio);
+        });
+    }
+
+    // 4. FUNÇÕES DE BANCO DE DADOS (CRIAR, EDITAR, EXCLUIR, VOTAR)
+    function salvarTurma() {
+        const nome = document.getElementById('nomeNovaTurma').value.trim();
+        const serie = document.getElementById('serieNovaTurma').value;
+        if (nome) {
+            db.collection("turmas").add({ nome, serie }).then(() => document.getElementById('nomeNovaTurma').value = "");
+        }
+    }
+
+    function editarTurma(id, nomeAtual) {
+        const novoNome = prompt("Novo nome da turma:", nomeAtual);
+        if (novoNome && novoNome.trim() !== "") db.collection("turmas").doc(id).update({ nome: novoNome });
+    }
+
+    async function excluirTurma(id) {
+        if (confirm("ATENÇÃO: Você apagará a turma E TODOS OS ALUNOS cadastrados nela. Deseja continuar?")) {
+            try {
+                const batch = db.batch();
+                // 1. Coleta todos os alunos da turma para apagar em cascata
+                const alunosSnapshot = await db.collection("alunos").where("turmaId", "==", id).get();
+                alunosSnapshot.forEach(doc => batch.delete(doc.ref));
+                // 2. Apaga a turma em si
+                batch.delete(db.collection("turmas").doc(id));
+                // 3. Executa a destruição dupla
+                await batch.commit();
+            } catch (err) { alert("Erro ao excluir: " + err.message); }
+        }
+    }
+
+    function salvarAluno() {
+        const turmaId = document.getElementById('select-turma-cadastro').value;
+        const nome = document.getElementById('nomeNovoAluno').value.trim();
+        const media = parseFloat(document.getElementById('mediaNovoAluno').value);
+        if (!turmaId || !nome || isNaN(media)) return alert("Preencha turma, nome e média!");
+
+        const turmaObj = listaDeTurmas.find(t => t.id === turmaId);
+        db.collection("alunos").add({
+            nome, turmaId, serie: turmaObj.serie, mediaInicial: media, mediaFinal: media, votosRegistrados: {}
+        }).then(() => {
+            document.getElementById('nomeNovoAluno').value = "";
+            document.getElementById('mediaNovoAluno').value = "";
         });
     }
 
@@ -274,69 +352,6 @@
 
     function excluirAluno(id) {
         if (confirm("Apagar aluno permanentemente?")) db.collection("alunos").doc(id).delete();
-    }
-
-    // 4. LÓGICA DE VOTAÇÃO
-    function carregarAlunosParaVotacao() {
-        const turmaId = document.getElementById('filtro-turma-votacao').value;
-        const divVotacao = document.getElementById('lista-votacao');
-        if (!turmaId) { divVotacao.innerHTML = "<p>Selecione uma turma acima.</p>"; return; }
-
-        db.collection("alunos").where("turmaId", "==", turmaId).onSnapshot(snapshot => {
-            let alunosTemp = [];
-            snapshot.forEach(doc => alunosTemp.push({ id: doc.id, ...doc.data() }));
-            
-            // Ordena alfabeticamente localmente
-            alunosTemp.sort((a, b) => a.nome.localeCompare(b.nome));
-
-            let html = "";
-            alunosTemp.forEach(aluno => {
-                const votos = aluno.votosRegistrados || {};
-                
-                const renderCompetencia = (compNome) => {
-                    let logHtml = "";
-                    let jaVotou = false;
-
-                    for (let key in votos) {
-                        if (votos[key].competencia === compNome) {
-                            const v = votos[key];
-                            const corBadge = v.valor > 0 ? 'badge-up' : 'badge-down';
-                            const sinal = v.valor > 0 ? '+' : '';
-                            logHtml += `<div><span class="badge ${corBadge}">${sinal}${v.valor}</span> <strong>${v.prof}</strong>: <em>${v.obs || 'Sem obs'}</em></div>`;
-                            if (v.prof === professorLogado) jaVotou = true;
-                        }
-                    }
-
-                    if (logHtml === "") logHtml = "<em>Nenhum voto.</em>";
-
-                    let interfaceVoto = jaVotou 
-                        ? `<div style="color: #198754; font-weight: bold; font-size: 13px;">✅ Você já votou nesta competência!</div>`
-                        : `<div class="votacao-acoes">
-                                <input type="text" id="obs-${aluno.id}-${compNome}" class="obs-input" placeholder="Justificativa (Opcional)">
-                                <button class="btn-vote btn-up" onclick="votar('${aluno.id}', '${compNome}', 0.5, 'obs-${aluno.id}-${compNome}')">+0,5</button>
-                                <button class="btn-vote btn-down" onclick="votar('${aluno.id}', '${compNome}', -0.5, 'obs-${aluno.id}-${compNome}')">-0,5</button>
-                           </div>`;
-
-                    return `
-                        <div class="competencia-row">
-                            <div><strong>${compNome}</strong><div class="historico-votos">${logHtml}</div></div>
-                            ${interfaceVoto}
-                        </div>`;
-                };
-
-                html += `
-                    <div class="card">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; margin-bottom: 10px;">
-                            <strong style="font-size: 18px;">${aluno.nome}</strong>
-                            <span style="font-size: 18px;">Média: <strong style="color: #0d6efd;">${aluno.mediaFinal.toFixed(2)}</strong></span>
-                        </div>
-                        ${renderCompetencia('Comportamento')}
-                        ${renderCompetencia('Participação')}
-                        ${renderCompetencia('Frequência')}
-                    </div>`;
-            });
-            divVotacao.innerHTML = html || "<p>Nenhum aluno nesta turma.</p>";
-        });
     }
 
     async function votar(alunoId, competencia, valor, inputId) {
@@ -363,40 +378,6 @@
                 }, { merge: true });
             });
         } catch (err) { alert(err); }
-    }
-
-    // 5. RANKINGS (Ordenação e corte local)
-    function iniciarRankings() {
-        const series = ['6', '7', '8', '9'];
-        const divRankings = document.getElementById('rankings');
-        
-        series.forEach(serie => {
-            let divSerie = document.createElement('div');
-            divSerie.id = `ranking-${serie}`;
-            divRankings.appendChild(divSerie);
-
-            db.collection("alunos").where("serie", "==", serie).onSnapshot(snapshot => {
-                let alunosTemp = [];
-                snapshot.forEach(doc => alunosTemp.push(doc.data()));
-                
-                // Ordena do maior pro menor e pega apenas os 3 primeiros
-                alunosTemp.sort((a, b) => b.mediaFinal - a.mediaFinal);
-                let top3 = alunosTemp.slice(0, 3);
-
-                let html = `<div class="ranking-box"><h4 style="margin-top:0; color:#856404;">Pódio - ${serie}º Ano</h4>`;
-                
-                if (top3.length === 0) {
-                    html += `<p style="font-size: 13px; color: #666;">Aguardando alunos...</p>`;
-                } else {
-                    top3.forEach((a, index) => {
-                        html += `<p style="margin: 5px 0;"><strong>${index + 1}º</strong> ${a.nome} - <span style="font-weight:bold; color:#d39e00;">Nota: ${a.mediaFinal.toFixed(2)}</span></p>`;
-                    });
-                }
-                
-                html += `</div>`;
-                divSerie.innerHTML = html;
-            });
-        });
     }
 </script>
 </body>
