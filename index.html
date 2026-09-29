@@ -87,6 +87,11 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
 .voto-ok{font-size:13px;font-weight:600;color:var(--ok)}
 .voto-ok::before{content:"";display:inline-block;width:6px;height:11px;margin:0 8px 2px 2px;border:solid var(--ok);border-width:0 2px 2px 0;transform:rotate(45deg)}
 
+/* Componente Desfazer Voto */
+.btn-undo{height:32px;padding:0 12px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;border:1px solid var(--linha);color:var(--suave);transition:background .15s,color .15s}
+.btn-undo:hover{background:var(--papel);color:var(--texto)}
+.voto-registrado-container{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--azul-claro);padding:8px 12px;border-radius:6px;border:1px solid #B7C6E2}
+
 /* Pódios */
 .podio{border:1px solid var(--linha);border-top:3px solid var(--ouro);border-radius:6px;padding:16px 18px 10px;margin-bottom:16px;background:#fff}
 .podio h4{font-size:17px;margin-bottom:8px}
@@ -158,7 +163,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
                 <div id="lista-votacao"><p class="vazio">Selecione uma turma acima.</p></div>
             </div>
             <div class="col col-podios">
-                <h3 style="margin-bottom:14px">Pódios oficiais</h3>
+                <h3 style="margin-bottom:14px">Pódios oficiais (Por Turma)</h3>
                 <div id="rankings"></div>
             </div>
         </div>
@@ -179,7 +184,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
     <div id="aba-turmas" class="container aba-conteudo" style="display:none;">
         <div class="painel">
             <h3>Criar nova turma</h3>
-            <p class="descricao">Cada turma pertence a uma série, que define em qual pódio seus alunos competem.</p>
+            <p class="descricao">Crie as turmas que os professores irão avaliar (Ex: 6º Ano A, 6º Ano B).</p>
             <div class="form-linha">
                 <input type="text" id="nomeNovaTurma" placeholder="Ex.: 6º Ano A">
                 <select id="serieNovaTurma" style="flex:0 0 150px">
@@ -198,7 +203,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
             <div class="form-linha">
                 <select id="select-turma-cadastro" onchange="atualizarTelas()"><option value="">Escolha a turma</option></select>
                 <input type="text" id="nomeNovoAluno" placeholder="Nome do aluno" style="flex:2">
-                <input type="number" id="mediaNovoAluno" placeholder="Média atual (ex.: 8,5)" step="0.1" style="flex:0 0 170px">
+                <input type="number" id="mediaNovoAluno" placeholder="Média atual (ex.: 8.5)" step="0.1" style="flex:0 0 170px">
                 <button class="btn-primary" onclick="salvarAluno()">Adicionar aluno</button>
             </div>
             <div id="lista-alunos-admin"><p class="vazio">Selecione uma turma acima.</p></div>
@@ -347,7 +352,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
             divAdmin.innerHTML = htmlAlunos || "<p class='vazio'>Nenhum aluno nesta turma.</p>";
         }
 
-        // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO (COM TRAVA DE PROFESSOR)
+        // 3.4 ATUALIZAR PAINEL DE VOTAÇÃO (COM TRAVA DE PROFESSOR E BOTÃO DESFAZER)
         const idVot = selVotacao.value;
         const divVotacao = document.getElementById('lista-votacao');
         
@@ -362,7 +367,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
                 
                 const renderComp = (compNome) => {
                     let logHtml = "";
-                    let jaVotou = false;
+                    let meuVoto = null;
                     
                     for (let key in votos) {
                         if (votos[key].competencia === compNome) {
@@ -372,17 +377,21 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
                             logHtml += `<div><span class="badge ${badge}">${sinal}${v.valor}</span> <strong>${esc(v.prof)}</strong>: <em>${esc(v.obs || 'Sem justificativa')}</em></div>`;
                             
                             // Verifica se o professor SELECIONADO já votou
-                            if (selectProf.value && v.prof === selectProf.value) jaVotou = true;
+                            if (selectProf.value && v.prof === selectProf.value) meuVoto = v;
                         }
                     }
                     if (logHtml === "") logHtml = "<em>Nenhum voto.</em>";
 
-                    // Define o que mostrar na área de ação (Botões, Aviso de Bloqueio, ou Pedido para selecionar o nome)
                     let acoes = "";
                     if (!selectProf.value) {
                         acoes = `<div class="aviso-voto">Selecione seu nome na etapa 1 para votar.</div>`;
-                    } else if (jaVotou) {
-                        acoes = `<div class="voto-ok">Você já votou nesta competência</div>`;
+                    } else if (meuVoto) {
+                        // Novo layout com o botão Desfazer
+                        acoes = `
+                            <div class="voto-registrado-container">
+                                <span class="voto-ok">Voto registrado</span>
+                                <button class="btn-undo" onclick="desfazerVoto('${aluno.id}', '${compNome}')">Desfazer voto</button>
+                            </div>`;
                     } else {
                         acoes = `
                             <div class="votacao-acoes">
@@ -407,23 +416,31 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
             divVotacao.innerHTML = htmlVot || "<p class='vazio'>Nenhum aluno nesta turma.</p>";
         }
 
-        // 3.5 ATUALIZAR OS PÓDIOS
+        // 3.5 ATUALIZAR OS PÓDIOS (NOVO: POR TURMA INDIVIDUAL)
         const divRankings = document.getElementById('rankings');
         divRankings.innerHTML = ''; 
-        ['6', '7', '8', '9'].forEach(serie => {
-            let pódio = document.createElement('div');
-            let alunosSerie = alunosValidos.filter(a => a.serie === serie).sort((a, b) => b.mediaFinal - a.mediaFinal).slice(0, 3);
-            
-            let htmlRank = `<div class="podio"><h4>${serie}º ano</h4>`;
-            if (alunosSerie.length === 0) {
-                htmlRank += `<p class="vazio">Aguardando alunos.</p>`;
-            } else {
-                alunosSerie.forEach((a, i) => htmlRank += `<div class="pos pos-${i + 1}"><span class="medalha">${i + 1}</span><span class="pos-nome">${esc(a.nome)}</span><span class="pos-nota">${a.mediaFinal.toFixed(2)}</span></div>`);
-            }
-            htmlRank += `</div>`;
-            pódio.innerHTML = htmlRank;
-            divRankings.appendChild(pódio);
-        });
+        
+        if (listaDeTurmas.length === 0) {
+            divRankings.innerHTML = "<p class='vazio'>Nenhuma turma cadastrada.</p>";
+        } else {
+            listaDeTurmas.forEach(turma => {
+                let pódio = document.createElement('div');
+                // Filtra os alunos específicos dessa turma
+                let alunosDaTurma = alunosValidos.filter(a => a.turmaId === turma.id).sort((a, b) => b.mediaFinal - a.mediaFinal).slice(0, 3);
+                
+                let htmlRank = `<div class="podio"><h4>${esc(turma.nome)}</h4>`;
+                
+                if (alunosDaTurma.length === 0) {
+                    htmlRank += `<p class="vazio">Aguardando alunos.</p>`;
+                } else {
+                    alunosDaTurma.forEach((a, i) => htmlRank += `<div class="pos pos-${i + 1}"><span class="medalha">${i + 1}</span><span class="pos-nome">${esc(a.nome)}</span><span class="pos-nota">${a.mediaFinal.toFixed(2)}</span></div>`);
+                }
+                htmlRank += `</div>`;
+                
+                pódio.innerHTML = htmlRank;
+                divRankings.appendChild(pódio);
+            });
+        }
     }
 
     // 4. FUNÇÕES DE BANCO DE DADOS
@@ -486,7 +503,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
         const novoNome = prompt("Novo nome:", nomeAtual) || nomeAtual;
         const novaMediaStr = prompt("Alterar média final:", mediaAtual);
         if (novaMediaStr !== null) {
-            const novaMedia = parseFloat(novaMediaStr);
+            const novaMedia = parseFloat(novaMediaStr.replace(',', '.')); // Corrige caso digite com vírgula
             if (!isNaN(novaMedia)) db.collection("alunos").doc(id).update({ nome: novoNome, mediaFinal: novaMedia });
         }
     }
@@ -512,18 +529,56 @@ label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:0 0
                 let dados = doc.data();
                 if ((dados.votosRegistrados || {})[votoKey]) throw "Você já votou nesta competência para este aluno!";
                 
-                let novaMedia = dados.mediaFinal + valor;
+                let notaAnterior = dados.mediaFinal;
+                let novaMedia = notaAnterior + valor;
                 if (novaMedia > 10) novaMedia = 10;
                 if (novaMedia < 0) novaMedia = 0;
 
+                let impactoReal = novaMedia - notaAnterior;
+
+                // Usa set com merge: true para atualizar o objeto aninhado com total segurança
                 transaction.set(ref, {
                     mediaFinal: novaMedia,
                     votosRegistrados: {
-                        [votoKey]: { valor, obs, prof: profNome, competencia, data: new Date().toISOString() }
+                        [votoKey]: { valor, delta: impactoReal, obs, prof: profNome, competencia, data: new Date().toISOString() }
                     }
                 }, { merge: true });
             });
         } catch (err) { alert(err); }
+    }
+
+    // NOVA FUNÇÃO: DESFAZER VOTO
+    async function desfazerVoto(alunoId, competencia) {
+        const profNome = document.getElementById('select-prof-votante').value;
+        if (!profNome) return;
+        
+        const ref = db.collection('alunos').doc(alunoId);
+        const profKey = profNome.replace(/[\.\#\$\[\]]/g, '_');
+        const votoKey = `${profKey}_${competencia}`;
+
+        if (!confirm("Deseja desfazer este voto? A nota será recalculada e você poderá votar novamente.")) return;
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(ref);
+                let dados = doc.data();
+                let meuVoto = (dados.votosRegistrados || {})[votoKey];
+                
+                if (!meuVoto) throw "Voto não encontrado.";
+
+                // Usa o delta armazenado para voltar exatamente o que foi adicionado/retirado na época
+                let impactoReal = meuVoto.delta !== undefined ? meuVoto.delta : meuVoto.valor;
+                let novaMedia = dados.mediaFinal - impactoReal;
+                if (novaMedia > 10) novaMedia = 10;
+                if (novaMedia < 0) novaMedia = 0;
+
+                // Atualiza a nota e destrói o registro daquele voto específico
+                transaction.update(ref, {
+                    mediaFinal: novaMedia,
+                    [`votosRegistrados.${votoKey}`]: firebase.firestore.FieldValue.delete()
+                });
+            });
+        } catch(err) { alert(err); }
     }
 </script>
 </body>
